@@ -1,0 +1,17 @@
+version: '2'
+
+volumes:
+    opt-logs:
+    opt-splunk-var:
+
+services:
+  apache:
+    build: ./apache
+    restart: always
+    volumes:
+      - opt-logs:/var/log/apache2
+  splunk:
+    build: ./splunk
+    volumes:
+      - opt-logs:/opt/logs
+      - opt-splunk-var:/opt/splunk/var

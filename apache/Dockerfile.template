@@ -1,0 +1,28 @@
+FROM balenalib/%%BALENA_MACHINE_NAME%%-ubuntu
+
+ENV COMMON_UID 789
+ENV COMMON_GID 789
+ENV LOGS_USER logs
+ENV LOGS_GROUP logs
+ENV LOG_PATH /opt/logs
+
+ENV APACHE_LOG_DIR /var/log/apache2
+ENV APACHE_LOCK_DIR /var/lock/apache2
+ENV APACHE_PID_FILE /var/run/apache2.pid
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y apache2 \
+    && echo "umask 0022" >> /etc/apache2/envvars \
+    && groupadd -g ${COMMON_GID} -r ${LOGS_GROUP} \
+    && useradd -r -s /usr/sbin/nologin -m -d ${LOG_PATH} -g ${LOGS_GROUP} -u ${COMMON_UID} ${LOGS_USER} \
+    && chgrp ${LOGS_GROUP} ${APACHE_LOG_DIR} \
+    && rm -f ${APACHE_LOG_DIR}/*
+
+STOPSIGNAL SIGWINCH
+
+COPY entrypoint.sh /usr/local/bin/
+
+EXPOSE 80
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

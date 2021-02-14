@@ -1,0 +1,41 @@
+FROM balenalib/%%BALENA_MACHINE_NAME%%-ubuntu
+
+ENV COMMON_UID 789
+ENV COMMON_GID 789
+ENV LOG_PATH /opt/logs
+
+ENV SPLUNK_HOME /opt/splunk
+ENV SPLUNK_GROUP splunk
+ENV SPLUNK_USER splunk
+ENV SPLUNK_BUILD 545206cc9f70
+ENV SPLUNK_VERSION 8.1.2
+ENV SPLUNK_ARCH arm
+ENV SPLUNK_PRODUCT universalforwarder
+ENV SPLUNK_FILENAME splunkforwarder-${SPLUNK_VERSION}-${SPLUNK_BUILD}-Linux-${SPLUNK_ARCH}.tgz
+ARG DEBIAN_FRONTEND=noninteractive
+
+COPY usr/ /usr/
+
+RUN groupadd -g ${COMMON_GID} -r ${SPLUNK_GROUP} \
+    && useradd -r -m -d ${SPLUNK_HOME} -g ${SPLUNK_GROUP} -u ${COMMON_UID} ${SPLUNK_USER} \
+    && dpkg --add-architecture armhf \
+	&& apt-get update && apt-get install -y libc6:armhf libstdc++6:armhf wget \
+	&& ln -s /lib/arm-linux-gnueabihf/ld-2.30.so /lib/ld-linux.so.3 \
+    && /usr/local/bin/get-splunk.sh \
+    && (cd /tmp && md5sum -c ${SPLUNK_FILENAME}.md5) \
+    && tar xzf /tmp/${SPLUNK_FILENAME} --strip 1 -C ${SPLUNK_HOME} \
+    && rm /tmp/${SPLUNK_FILENAME} \
+    && rm /tmp/${SPLUNK_FILENAME}.md5 \
+    && apt-get purge -y --auto-remove wget \
+    && for i in lib log run spool; do mkdir -p ${SPLUNK_HOME}/var/$i; done \
+    && mkdir -p ${LOG_PATH} && chown ${SPLUNK_USER} ${LOG_PATH}
+
+COPY opt/ /opt/
+
+RUN chown -R ${SPLUNK_USER}:${SPLUNK_GROUP} ${SPLUNK_HOME}
+
+WORKDIR ${SPLUNK_HOME}
+
+USER ${SPLUNK_USER}
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
